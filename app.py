@@ -95,6 +95,12 @@ def gallery():
 @app.route('/upload', methods=['GET', 'POST'])
 def upload_file():
     if request.method == 'POST':
+        
+        upload_password = request.form.get('upload_password')
+        if upload_password != os.getenv('UPLOAD_PASSWORD'):
+            flash('Invalid upload password.', 'error')  
+            return redirect(request.url)
+        
         if 'file' not in request.files:
             return redirect(request.url)
         file = request.files['file']
@@ -112,7 +118,8 @@ def upload_file():
         if cursor.fetchone():
             cursor.close()
             conn.close()
-            return 'This file has already been uploaded.', 400
+            flash('Duplicate files not allowed', 'error')  
+            return redirect(request.url)
 
         # No duplicates found; proceed with file upload to S3
         s3_client.upload_fileobj(file, app.config['S3_BUCKET'], filename)
