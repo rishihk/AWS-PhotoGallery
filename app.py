@@ -102,12 +102,22 @@ def upload_file():
             return redirect(request.url)
         
         filename = secure_filename(file.filename)
+
+        # Database connection setup
+        conn = mysql.connector.connect(**db_config)
+        cursor = conn.cursor()
+
+        # Check for duplicate uploads based on filename
+        cursor.execute('SELECT * FROM Image WHERE Title = %s', (filename,))
+        if cursor.fetchone():
+            cursor.close()
+            conn.close()
+            return 'This file has already been uploaded.', 400
+
+        # No duplicates found; proceed with file upload to S3
         s3_client.upload_fileobj(file, app.config['S3_BUCKET'], filename)
         file_url = f"https://{app.config['S3_BUCKET']}.s3.amazonaws.com/{filename}"
         
-        # Database logic for storing image details
-        conn = mysql.connector.connect(**db_config)
-        cursor = conn.cursor()
         cursor.execute('INSERT INTO Image (Title, Description, Tags, URL) VALUES (%s, %s, %s, %s)', (
             request.form.get('title', 'Untitled'),
             request.form.get('description', ''),
@@ -115,12 +125,17 @@ def upload_file():
             file_url
         ))
         conn.commit()
+
+        # Close DB connection
         cursor.close()
         conn.close()
         
+        # Redirect to the gallery page after successful upload
         return redirect(url_for('gallery'))
     
-    return render_template('upload.html')  
+    # Show the upload form for GET requests
+    return render_template('upload.html')
+
 
 @app.route('/logout', methods=['POST'])
 def logout():
