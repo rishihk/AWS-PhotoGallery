@@ -97,8 +97,7 @@ def upload_file():
     if request.method == 'POST':
         
         upload_password = request.form.get('upload_password')
-        if upload_password != os.getenv('UPLOAD_PASSWORD'):
-            flash('Invalid upload password.', 'error')  
+        if upload_password != os.getenv('MOD_PASSWORD'):
             return redirect(request.url)
         
         if 'file' not in request.files:
@@ -151,6 +150,11 @@ def logout():
 
 @app.route('/remove_image/<filename>', methods=['POST'])
 def remove_image(filename):
+    
+    remove_password = request.form['remove_password']
+    if remove_password != os.getenv('MOD_PASSWORD'):
+        return redirect(url_for('gallery'))
+    
     # Delete image from S3 bucket
     try:
         s3_client.delete_object(Bucket=app.config['S3_BUCKET'], Key=filename)
